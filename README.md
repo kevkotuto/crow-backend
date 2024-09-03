@@ -51,8 +51,8 @@ Ce projet est un backend de messagerie en temps réel, conçu pour fournir une i
 1. Clonez le dépôt :
 
    ```bash
-   git clone https://github.com/votre-utilisateur/votre-repo.git
-   cd votre-repo
+   git clone https://github.com/kevkotuto/crow-backend.git
+   cd crow-backend
    ```
 
 2. Installez les dépendances :

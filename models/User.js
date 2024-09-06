@@ -1,42 +1,69 @@
 const db = require('../config/db');
 
-const User = {
-    fullName: (userId, callback) => {
-        const query = 'SELECT full_name FROM users WHERE id = ?';
-        db.query(query, [userId], callback);
+const Message = {
+    create: (from, to, content, type = 'text', callback) => {
+        const query = 'INSERT INTO messages (sender_id, receiver_id, content, type, reactions, created_at) VALUES (?, ?, ?, ?, ?, NOW())';
+        db.query(query, [from, to, content, type, JSON.stringify([])], callback);
     },
-    setOnlineStatus: (userId, isOnline, callback) => {
-        const query = 'UPDATE users SET is_online = ? WHERE id = ?';
-        db.query(query, [isOnline, userId], callback);
+
+    getMessagesBetweenUsers: (userId1, userId2, callback) => {
+        const query = `
+            SELECT * FROM messages 
+            WHERE (sender_id = ? AND receiver_id = ?) 
+            OR (sender_id = ? AND receiver_id = ?)
+            ORDER BY created_at ASC
+        `;
+        db.query(query, [userId1, userId2, userId2, userId1], callback);
     },
-    create: (fullName, phoneNumber, expoPushToken, callback) => {
-        const query = 'INSERT INTO users (full_name, phone_number, expo_push_token) VALUES (?, ?, ?)';
-        db.query(query, [fullName, phoneNumber, expoPushToken], callback);
+
+    getMessagesForUser: (userId, callback) => {
+        const query = `
+            SELECT * FROM messages 
+            WHERE sender_id = ? OR receiver_id = ?
+            ORDER BY created_at ASC
+        `;
+        db.query(query, [userId, userId], callback);
     },
-    findByPhoneNumber: (phoneNumber, callback) => {
-        const query = 'SELECT * FROM users WHERE phone_number = ?';
-        db.query(query, [phoneNumber], callback);
+
+    searchMessages: (userId, searchTerm, callback) => {
+        const query = `
+            SELECT * FROM messages 
+            WHERE (sender_id = ? OR receiver_id = ?)
+            AND content LIKE ?
+            ORDER BY created_at DESC
+        `;
+        db.query(query, [userId, userId, `%${searchTerm}%`], callback);
     },
-    updateOtp: (phoneNumber, otp, callback) => {
-        const query = 'UPDATE users SET otp = ? WHERE phone_number = ?';
-        db.query(query, [otp, phoneNumber], callback);
+
+    filterMessagesByDate: (userId, startDate, endDate, callback) => {
+        const query = `
+            SELECT * FROM messages 
+            WHERE (sender_id = ? OR receiver_id = ?)
+            AND created_at BETWEEN ? AND ?
+            ORDER BY created_at DESC
+        `;
+        db.query(query, [userId, userId, startDate, endDate], callback);
     },
-    verifyOtp: (phoneNumber, otp, callback) => {
-        const query = 'SELECT * FROM users WHERE phone_number = ? AND otp = ?';
-        db.query(query, [phoneNumber, otp], callback);
+
+    addReaction: (messageId, userId, reaction, callback) => {
+        const query = `
+            UPDATE messages
+            SET reactions = JSON_ARRAY_APPEND(reactions, '$', JSON_OBJECT('userId', ?, 'reaction', ?))
+            WHERE id = ?
+        `;
+        db.query(query, [userId, reaction, messageId], callback);
     },
-    updatePushToken: (phoneNumber, expoPushToken, callback) => {
-        const query = 'UPDATE users SET expo_push_token = ? WHERE phone_number = ?';
-        db.query(query, [expoPushToken, phoneNumber], callback);
-    },
-    update: (query, params, callback) => {
-        db.query(query, params, callback);
-    },
-    findById: (userId, callback) => {
-        const query = 'SELECT * FROM users WHERE id = ?';
-        db.query(query, [userId], callback);
+
+    removeReaction: (messageId, userId, reaction, callback) => {
+        const query = `
+            UPDATE messages
+            SET reactions = JSON_REMOVE(reactions, 
+                JSON_UNQUOTE(JSON_SEARCH(reactions, 'one', JSON_OBJECT('userId', ?, 'reaction', ?))))
+            WHERE id = ?
+        `;
+        db.query(query, [userId, reaction, messageId], callback);
     }
-    // Autres méthodes CRUD si nécessaire
+    // Ajoutez d'autres méthodes CRUD si nécessaire
 };
 
-module.exports = User;
+module.exports = Message;
